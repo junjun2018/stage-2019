@@ -18,3 +18,4 @@ repatition : https://blog.csdn.net/eibo51/article/details/50625967
 git beaglebord : https://github.com/beagleboard
 
 u-boot http://www.denx.de/wiki/DULG/Manual
+u-boot tutoral https://www.cnblogs.com/lifexy/category/1032343.html
