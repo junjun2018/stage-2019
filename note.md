@@ -22,3 +22,5 @@ u-boot http://www.denx.de/wiki/DULG/Manual
 u-boot tutoral https://www.cnblogs.com/lifexy/category/1032343.html
 
 les document utile https://www.jqhtml.com/down/3040.html#
+
+reboot SD https://hceng.cn/2017/11/07/Exynos4412%E2%80%94%E2%80%94SD%E5%8D%A1%E5%90%AF%E5%8A%A8/
