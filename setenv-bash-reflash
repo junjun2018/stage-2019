@@ -1,0 +1,128 @@
+setenv bootargs root=/dev/nfs ip=192.168.0.100:::::eth0 nfsroot=192.168.0.1:/home/hachicha/linux-kernel-labs/modules/nfsroot,nfsvers=3 rw
+
+setenv bootcmd 'tftp 0x81000000 zImage; tftp 0x82000000 am335x-boneblack.dtb; bootz 0x81000000 - 0x82000000'
+
+setenv bootargs root=/dev/nfs ip=192.168.0.100:::::eth0 nfsroot=192.168.0.1:/home/hachicha/busybox-1_29_stable/nfsroot,nfsvers=3 rw
+
+setenv bootargs root=/dev/nfs ip=192.168.0.100:::::eth0 nfsroot=192.168.0.1:/home/hachicha/nfsroot,nfsvers=3 rw
+
+setenv bootargs root=/dev/nfs ip=192.168.0.100:::::eth0 nfsroot=192.168.0.1:/home/hachicha/embedded-linux-labs/thirdparty/target,nfsvers=3 rw
+
+setenv bootargs root=/dev/nfs ip=192.168.0.100:::::eth0 nfsroot=192.168.0.1:/home/hachicha/embedded-linux-labs/buildroot/nfsroot,nfsvers=3 rw
+
+rsc -> reflash emmc
+
+/etc/init.d # less rcS 
+#!/bin/sh
+
+success () {
+
+	# Led status that indicates success
+	for led in /sys/class/leds/*
+	do
+		echo none > $led/trigger
+		echo 255 > $led/brightness
+	done
+	echo "eMMC flashing successful"
+}
+
+failure () {
+
+	# Led status that indicates success
+	for led in /sys/class/leds/*
+	do
+		echo timer > $led/trigger
+		echo 100 > $led/delay_on
+		echo 100 > $led/delay_off
+	done
+	exit 1
+}
+
+try_to_mount () {
+	mount -t vfat $1 $2
+	if [ $? -ne 0 ]
+	then
+		echo "ERROR: failed to mount $1 on $2 with a FAT filesystem"
+		failure
+	fi
+}
+
+partition_emmc () {
+	dev=/dev/mmcblk1
+
+	dd if=$dev of=/MBR count=1
+	cmp /mnt/mmc0/MBR /MBR
+	if [ $? -ne 0 ]; then
+		echo "Rewriting partition table"
+		dd if=/mnt/mmc0/MBR of=$dev
+		reboot
+	fi
+	rm /MBR
+}
+
+clear_emmc_env_and_mount () {
+
+	# Needed to be resistant to whatever people have done to their eMMC before
+
+  	# Inits
+	part=/dev/mmcblk1p1
+	mnt=$1
+
+	# Delete the environment
+	echo 0 > /sys/block/mmcblk1boot1/force_ro
+	dd if=/dev/zero of=/dev/mmcblk1boot1
+
+	# Try to mount the first partition
+	mount -t vfat $part $mnt
+	if [ $? -ne 0 ]
+	then
+		mkfs.vfat -F 32 -n emmcboot $part
+		try_to_mount $part $mnt
+	fi
+}
+
+try_to_copy () {
+	cp $1 $2
+	if [ $? -ne 0 ]
+	then
+		echo "ERROR: failed to copy $1 to $2"
+		failure
+	fi
+}
+
+# System initialization
+
+mount -t devtmpfs none /dev
+mount -t proc none /proc
+mount -t sysfs none /sys
+
+# Sleep for 5 seconds
+# Time needed sometimes for the kernel to initialize the MMC devices
+# Otherwise mounting will fail
+sleep 5
+
+# Mount MMC partitions
+
+mmc1=/mnt/mmc1
+mmc0=/mnt/mmc0
+
+try_to_mount /dev/mmcblk0p1 $mmc0
+partition_emmc
+clear_emmc_env_and_mount $mmc1
+
+# Copy the MLO and u-boot.bin files
+
+mlo=$mmc1/MLO
+uboot=$mmc1/u-boot.img
+
+try_to_copy $mmc0/MLO.final $mlo
+try_to_copy $mmc0/u-boot.img.final $uboot
+
+# Unmount MMC partitions
+
+umount $mmc1
+umount $mmc0
+
+# Everything successful
+success
+/etc/init.d
