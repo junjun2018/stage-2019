@@ -1,4 +1,3 @@
 # stage-2019
-test test test
-dsjkhfjks
-bonjour
+stage sur beaglebone black 
+tache realise : uboot sur microSD, root file system, NFS,application ogg
